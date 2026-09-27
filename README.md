@@ -1,88 +1,138 @@
-# 文墨 — AI 写作助手
+<div align="center">
 
-「写文 Agent」软件成品，Python + PySide6 单机版（仅 Windows）。
-接入 DeepSeek（OpenAI 兼容协议），支持流式输出、思维链展示、对话历史持久化、搜索与导出。
+# 文墨 · WenMo
 
-## 快速开始
+**A local-first AI writing assistant for Windows**
 
-1. 双击 `app/dist/文墨.exe` 即可使用，无需安装 Python。
-2. **首次启动请到「设置」里填写你自己的 API Key**（项目不内置任何密钥；Key 存 Windows 凭据管理器，界面只显示尾 4 位）。
-3. 应用数据（数据库 / 模板 / 导出文件）存放在 `%APPDATA%\文墨\`，与 exe 分离，升级不丢数据。
+DeepSeek-style chat UI · Four-stage creative pipeline · SQLite persistence · Bring your own key
 
-## 功能一览
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Qt](https://img.shields.io/badge/UI-PySide6%20(Qt6)-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows&logoColor=white)](#)
+[![Storage](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white)](#)
+[![License](https://img.shields.io/badge/License-TBD-lightgrey)](#license)
 
-| 功能 | 说明 |
-|---|---|
-| 对话 | DeepSeek 风格界面：居中对话列、头像、可折叠「已深度思考」、消息下方操作栏（复制/重新生成/删除）；流式打字机、随时停止（保留已生成内容） |
-| 创作流水线 | 默认开启：每次生成按「① 规划大纲 → ② 补充设定 → ③ 细化大纲 → ④ 生成文本」四阶段自主完成，过程可折叠查看；输入面板可一键关闭回到单发快速模式 |
-| 会话管理 | 新建 / 重命名 / 删除（级联删消息，二次确认）/ 按最近排序 |
-| 历史持久化 | 全部消息落 SQLite（`%APPDATA%\文墨\wenmo.db`），重启不丢 |
-| 历史搜索 | 侧栏「历史记录」全局搜索消息内容，双击跳转定位 |
-| 导出 | 会话右键 → 导出 Markdown / 纯文本 |
-| 写作模板 | 自由对话 / 大纲生成 / 续写 / 润色 / 起名 / 世界观设定 / 文风模仿，共 7 个 |
-| Key 安全存储 | API Key 存 Windows 凭据管理器（DPAPI），界面只显示尾 4 位 |
-| 换服务商 | 设置页选预设（DeepSeek / 智谱 / Kimi / 通义）自动填地址和模型名，「测试连接」一键验证 |
-| 上下文控制 | 可设上下文最大轮数，超限自动截断最早轮次 |
+**English** · [简体中文](README.zh-CN.md)
 
-## 写作模板自定义
+![WenMo screenshot](docs/screenshot.png)
 
-模板 JSON 在 `%APPDATA%\文墨\prompts\`，每个文件一个模板：
+</div>
+
+---
+
+WenMo (文墨, "ink & pen") is not a generic chatbot — it is a **writing agent**. Instead of answering in one shot, it plans an outline, fills in the worldbuilding, refines the outline, and only then writes the final draft. Everything runs locally: your chat history lives in a local SQLite file, and your API key never leaves the Windows Credential Manager.
+
+## ✨ Features
+
+| | Feature | What you get |
+|---|---|---|
+| 🪄 | **Creative Pipeline** | Every request runs four stages — ① Outline → ② Worldbuilding → ③ Detailed Outline → ④ Draft. Each stage is a collapsible block above the reply; toggle the pipeline off for fast single-shot generation. |
+| 💬 | **DeepSeek-style chat UI** | Centered reading column, avatars, collapsible "deep thinking" blocks, per-message action bar (copy / regenerate / delete), streaming typewriter output with a stop button that keeps partial results. |
+| 💾 | **Local-first persistence** | All sessions and messages in SQLite (`%APPDATA%\文墨\wenmo.db`), including reasoning traces. Survives restarts; searchable; exportable to Markdown / plain text. |
+| 🔐 | **Key stays secret** | API key stored via Windows Credential Manager (DPAPI). The UI only ever shows the last 4 digits. No key ships with the source. |
+| 🧩 | **Writing templates** | 7 built-in system prompts (outline, continuation, polish, naming, worldbuilding, style mimicry, free chat). Drop your own JSON files to add more. |
+| 🔌 | **OpenAI-compatible** | Presets for DeepSeek / Zhipu GLM / Kimi / Qwen, or point it at any OpenAI-compatible endpoint. One-click "test connection". |
+| 📎 | **Context control** | Cap the conversation context to the last N rounds; oldest rounds are truncated automatically. |
+
+## 🪄 The Creative Pipeline
+
+```mermaid
+flowchart LR
+    A["① Outline<br/>规划大纲"] --> B["② Worldbuilding<br/>补充设定"]
+    B --> C["③ Detailed Outline<br/>细化大纲"]
+    C --> D["④ Draft<br/>生成文本"]
+    style A fill:#1e2430,stroke:#4a7dff,color:#dfe4ee
+    style B fill:#1e2430,stroke:#4a7dff,color:#dfe4ee
+    style C fill:#1e2430,stroke:#4a7dff,color:#dfe4ee
+    style D fill:#1e2430,stroke:#41CD52,color:#dfe4ee
+```
+
+Stages ①–③ are shown as collapsed blocks you can expand to inspect (and they are persisted with the message). Stage ④ is the actual reply. Expect roughly 30–80 s per pipeline run versus 2–10 s in single-shot mode — and ~3–4× the token usage.
+
+## 🚀 Getting Started
+
+1. Grab `文墨.exe` from the latest build (or [build it yourself](#%EF%B8%8F-build-from-source)) and double-click — no Python required.
+2. On first launch, open **设置 (Settings)** and paste your own API key. The app ships with **no key built in**.
+3. Pick a template, create a session, and start writing.
+
+> App data (database, templates, exports) lives in `%APPDATA%\文墨\`, separate from the exe — upgrades never wipe your history.
+
+## 🛠️ Build from Source
+
+```powershell
+cd app
+python -m venv venv
+venv\Scripts\python -m pip install -r requirements.txt
+
+# run in dev mode
+venv\Scripts\python main.py
+
+# run the smoke tests (real API cases are skipped unless a key is configured)
+venv\Scripts\python tests\smoke_test.py
+
+# build a single-file exe
+venv\Scripts\python -m PyInstaller --onefile --noconsole --name 文墨 `
+    --hidden-import keyring.backends.Windows main.py
+# → app\dist\文墨.exe
+```
+
+For an English-named binary, change `--name 文墨` to `--name WenMo`.
+
+## 📝 Custom Templates
+
+Each template is one JSON file in `%APPDATA%\文墨\prompts\`:
 
 ```json
 {
   "id": "my-template",
-  "name": "我的模板",
-  "system": "你是一位……（系统提示词）"
+  "name": "My Template",
+  "system": "You are a ... (system prompt)"
 }
 ```
 
-放进去重启软件即可在「新建会话」里选用。
+Restart the app and it shows up in the **new session** dialog.
 
-## 开发者指南
-
-```bash
-# 环境（项目内 venv，不污染全局）
-cd app
-python -m venv venv
-venv/Scripts/python -m pip install --index-url https://pypi.org/simple -r requirements.txt
-
-# 冒烟测试（含真实 API 流式验证）
-venv/Scripts/python tests/smoke_test.py
-
-# 运行（开发模式）
-venv/Scripts/python main.py
-
-# 打包 exe
-venv/Scripts/python -m PyInstaller --onefile --noconsole --name 文墨 --hidden-import keyring.backends.Windows main.py
-# 产物：app/dist/文墨.exe
-```
-
-> 注：本机 pip 全局配置指向的清华镜像解析不到 PySide6，安装依赖时需显式加
-> `--index-url https://pypi.org/simple`（已写入 requirements 使用说明）。
-
-## 目录结构
+## 🗂 Project Structure
 
 ```
 app/
-├── main.py                  # 入口
+├── main.py                  # entry point + crash logging
 ├── core/
-│   ├── config.py            # 数据目录 / 默认配置 / 服务商预设
-│   ├── db.py                # SQLite（sessions/messages/settings）
-│   ├── settings_store.py    # 配置存取 + keyring
-│   ├── llm.py               # httpx SSE 流式 + QThread
-│   ├── exporter.py          # 导出 md/txt
-│   └── prompts_store.py     # 写作模板
+│   ├── config.py            # data dirs / defaults / provider presets (no secrets)
+│   ├── db.py                # SQLite: sessions / messages / settings
+│   ├── settings_store.py    # config access + keyring
+│   ├── llm.py               # httpx SSE streaming on a QThread
+│   ├── pipeline.py          # four-stage creative pipeline
+│   ├── exporter.py          # Markdown / TXT export
+│   └── prompts_store.py     # writing templates
 ├── ui/
-│   ├── main_window.py       # 主窗口
-│   ├── chat_widgets.py      # 消息气泡
-│   ├── history_page.py      # 历史搜索页
-│   ├── settings_dialog.py   # 设置对话框
-│   └── theme.py             # 深色 QSS
-└── tests/smoke_test.py      # 冒烟测试
+│   ├── main_window.py       # main window, session list, chat controller
+│   ├── chat_widgets.py      # message bubbles, stage blocks, action bar
+│   ├── history_page.py      # history & global search
+│   ├── settings_dialog.py   # settings dialog
+│   └── theme.py             # dark QSS theme
+└── tests/
+    ├── smoke_test.py        # 7-section regression (DB / templates / real API / pipeline)
+    └── ui_preview.py        # offline visual check with fake messages
 ```
 
-## 技术要点
+## 🏗 Architecture
 
-- 默认模型：`deepseek-flash`（DeepSeek v4.1 flash 档，实测支持流式与 `reasoning_content` 思维链）。
-- 流式结束（done / stopped / error）时消息才落库，中断不掉已生成内容。
-- 思维链内容随消息一并存库（messages.reasoning 列），重启后气泡里仍能看到。
+See [TECHNICAL.md](TECHNICAL.md) for the full write-up: layer diagram, SQLite schema, streaming parser, pipeline design, packaging notes, and known risks.
+
+## 🔒 Privacy
+
+- Chat data never leaves your machine except in requests to the LLM provider you configure.
+- The API key is stored in the Windows Credential Manager and is never written to disk in plain text, logged, or included in exports.
+
+## License
+
+No license has been added yet. If you plan to use or fork this project, ping the repository owner.
+
+---
+
+<div align="center">
+
+Made with 🖋️ by [Forisinger](https://github.com/Forisinger)
+
+</div>

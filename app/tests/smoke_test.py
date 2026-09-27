@@ -120,7 +120,10 @@ if key:
     timer = QTimer()
     timer.timeout.connect(_check)
     timer.start(100)
-    QTimer.singleShot(90000, app.quit)  # 90s 兜底
+    guard5 = QTimer()                     # 90s 兜底：可主动停止，防止污染后续测试节
+    guard5.setSingleShot(True)
+    guard5.timeout.connect(app.quit)
+    guard5.start(90000)
     app.exec()
 
     assert result["status"] == "done", f"流式失败: status={result['status']} err={result.get('err')}"
@@ -130,6 +133,7 @@ if key:
 
     # ---------- 6. 四阶段创作流水线 ----------
     print("[6] 四阶段创作流水线（规划大纲→补充设定→细化大纲→生成文本）")
+    guard5.stop()  # 上节的兜底 quit 不再生效
     from PySide6.QtCore import QObject, Slot as QSlot
     from core.pipeline import PipelineWorker, format_stages
 

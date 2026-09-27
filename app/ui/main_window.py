@@ -404,7 +404,8 @@ class MainWindow(QMainWindow):
         self.open_session(sid, focus_message=mid)
 
     def _delete_message(self, mid: str) -> None:
-        db.delete_message(mid)
+        # 删除助手消息时级联删除触发它的用户消息 → 上下文随之回滚
+        db.delete_message_pair(mid)
         if self.current_session_id:
             self.open_session(self.current_session_id)
 
@@ -419,7 +420,9 @@ class MainWindow(QMainWindow):
         if not text:
             return
         if not settings_store.get_api_key():
-            QMessageBox.warning(self, APP_NAME, "尚未配置 API Key，请先到「设置」里填写。")
+            # 在对话区直接提示（不落库、不弹窗）
+            self._show_no_key_notice()
+            self.input.clear()
             return
 
         sid = self.current_session_id
@@ -436,6 +439,16 @@ class MainWindow(QMainWindow):
         self.input.clear()
         self._reload_sessions()
         self._start_generation()
+
+    def _show_no_key_notice(self) -> None:
+        """未配置 API Key：在对话区插入一条提示气泡（不落库，不进历史）。"""
+        self._hide_welcome()
+        bubble = MessageBubble("assistant")
+        bubble.finalize(
+            "⚠ **尚未连接 API Key**\n\n"
+            "请点击左侧「设置」，在 **API Key** 一栏填写你的 Key（保存前会自动验证）再发送。")
+        self.chat_lay.insertWidget(self.chat_lay.count() - 1, bubble)
+        QTimer.singleShot(0, self._scroll_bottom)
 
     def _build_payload(self) -> list[dict]:
         sid = self.current_session_id

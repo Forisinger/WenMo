@@ -155,6 +155,31 @@ def delete_message(mid: str) -> None:
     _c().commit()
 
 
+def delete_message_pair(mid: str) -> list[str]:
+    """删除一条助手消息及其触发它的用户消息（回滚上下文记忆）。
+
+    返回实际删除的消息 id 列表。非助手消息只删自身。
+    上下文每次生成都从库重建，删行即回滚。
+    """
+    msg = get_message(mid)
+    if msg is None:
+        return []
+    conn = _c()
+    ids = [mid]
+    if msg["role"] == "assistant":
+        row = conn.execute(
+            "SELECT id FROM messages WHERE session_id=? AND role='user' AND created_at<=? "
+            "ORDER BY created_at DESC LIMIT 1",
+            (msg["session_id"], msg["created_at"]),
+        ).fetchone()
+        if row:
+            ids.append(row["id"])
+    conn.execute(
+        f"DELETE FROM messages WHERE id IN ({','.join('?' * len(ids))})", ids)
+    conn.commit()
+    return ids
+
+
 def search_messages(query: str, limit: int = 200) -> list[dict]:
     """全局搜索消息内容，联出会话标题，按时间倒序。"""
     like = f"%{query}%"

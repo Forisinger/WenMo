@@ -58,6 +58,19 @@ db.delete_session(sid3)
 os.remove(out)
 ok("会话导出 md")
 
+# 删除助手消息级联回滚用户消息
+sid4 = db.create_session("级联回滚测试", "free")
+uid = db.add_message(sid4, "user", "触发消息")
+aid = db.add_message(sid4, "assistant", "AI 回复")
+db.add_message(sid4, "user", "下一条用户消息")  # 不应被误删
+deleted = db.delete_message_pair(aid)
+assert deleted == [aid, uid], f"级联删除返回异常: {deleted}"
+left = db.get_messages(sid4)
+assert len(left) == 1 and left[0]["content"] == "下一条用户消息", "上下文回滚失败"
+assert db.get_message(aid) is None and db.get_message(uid) is None
+db.delete_session(sid4)
+ok("删除助手消息级联回滚用户消息")
+
 # ---------- 3. 模板 ----------
 print("[3] 写作模板")
 prompts_store.ensure_default_prompts()
@@ -73,7 +86,12 @@ key = settings_store.get_api_key() or ""
 cfg = settings_store.all_config()
 assert cfg["base_url"] and cfg["model"]
 if key:
-    ok(f"Key 已配置（尾号 {key[-4:]}），BaseURL={cfg['base_url']}, Model={cfg['model']}")
+    key_ok, key_msg = llm.test_connection(cfg["base_url"], key, cfg["model"])
+    if not key_ok:
+        ok(f"已配置的 Key 验证失败（{key_msg}）——真实 API 用例将跳过")
+        key = ""
+    else:
+        ok(f"Key 已配置且有效（尾号 {key[-4:]}），BaseURL={cfg['base_url']}, Model={cfg['model']}")
 else:
     ok("本机未配置 Key（开源版不内置）——真实 API 用例将跳过")
 

@@ -11,12 +11,14 @@
 流式期间助手正文用纯文本增量渲染（快），结束后切换为 Markdown。
 右键菜单保留：复制 / 删除 / 重新生成（仅助手）。
 """
+import os
 import re
+import sys
 
 import markdown as _md
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QAction, QPixmap
 from PySide6.QtWidgets import (
     QAbstractScrollArea, QApplication, QHBoxLayout, QLabel, QMenu,
     QSizePolicy, QTextBrowser, QToolButton, QVBoxLayout, QWidget,
@@ -26,6 +28,13 @@ _COLUMN_MAX_W = 820   # 对话列最大宽（与主窗口 ChatColumn 保持一�
 _USER_MAX_W = 560     # 用户气泡最大宽
 
 _STAGE_RE = re.compile(r"【阶段(\d+)·([^】]+)】\s*\n?")
+
+
+def _asset_path(name: str) -> str:
+    """assets 资源路径：兼容 PyInstaller onefile 解包目录与源码运行。"""
+    base = getattr(sys, "_MEIPASS",
+                   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, "assets", name)
 
 
 def _md_to_html(text: str) -> str:
@@ -47,11 +56,50 @@ def _split_stages(reasoning: str) -> list[tuple[str, str]] | None:
     return sections
 
 
+class _BodyBrowser(QTextBrowser):
+    """正文浏览器：高度始终贴合文档内容。
+
+    QTextBrowser 的默认 sizeHint 与真实内容高度脱节（按插入时的排版宽度估算），
+    会造成正文和操作栏之间出现大段空白；这里在显示/尺寸变化后强制贴合。
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+    def fit_height(self) -> None:
+        self.document().setTextWidth(self.viewport().width())
+        h = int(self.document().size().height()) + 4
+        if h != self.height():
+            self.setFixedHeight(h)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self.fit_height)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.fit_height()
+
+
 def _make_avatar(role: str) -> QLabel:
-    av = QLabel("文" if role == "assistant" else "我")
-    av.setObjectName("AvatarAssistant" if role == "assistant" else "AvatarUser")
+    """助手 = 应用图标（墨滴+笔尖）；用户 = 「我」圆形标签。"""
+    av = QLabel()
     av.setFixedSize(34, 34)
     av.setAlignment(Qt.AlignCenter)
+    if role == "assistant":
+        pm = QPixmap(_asset_path("icon.png"))
+        if not pm.isNull():
+            av.setObjectName("AvatarIcon")  # 无 QSS 背景，避免圆角外露色
+            av.setPixmap(pm.scaled(34, 34, Qt.KeepAspectRatio,
+                                   Qt.SmoothTransformation))
+            return av
+        av.setObjectName("AvatarAssistant")
+        av.setText("文")
+        return av
+    av.setObjectName("AvatarUser")
+    av.setText("我")
     return av
 
 
@@ -87,9 +135,16 @@ class MessageBubble(QWidget):
             self.body.setTextInteractionFlags(Qt.TextSelectableByMouse)
             self.body.setMaximumWidth(_USER_MAX_W)
         else:
-            self.body = QTextBrowser()
+            self.body = _BodyBrowser()
             self.body.setObjectName("BubbleBody")
             self.body.setOpenExternalLinks(True)
+            # 压缩正文与操作栏的视觉间距：文档边距收紧 + 段落 margin 归零
+            self.body.document().setDocumentMargin(2)
+            self.body.document().setDefaultStyleSheet(
+                "p{margin:0 0 2px 0;} "
+                "h1,h2,h3,h4{margin:6px 0 4px 0;} "
+                "ul,ol{margin:2px 0 4px 18px;} li{margin:0;} "
+                "pre{margin:4px 0;} blockquote{margin:2px 0 2px 8px;}")
         self.content_col.addWidget(self.body)
 
         # ---- 普通思维链块（仅助手；流水线阶段块按需动态插入）----
@@ -122,7 +177,6 @@ class MessageBubble(QWidget):
 
         # ---- 组装：助手=头像在左；用户=内容在右、头像在右 ----
         if role == "assistant":
-            self.content_col.addStretch(1)
             root.addWidget(avatar, 0, Qt.AlignTop)
             root.addLayout(self.content_col, 1)
         else:
@@ -199,6 +253,8 @@ class MessageBubble(QWidget):
         self._streaming = True
         self._content = content
         self.body.setPlainText(content)
+        if isinstance(self.body, _BodyBrowser):
+            self.body.fit_height()
         self._autoscroll()
 
     def finalize(self, content: str, reasoning: str = "") -> None:
@@ -231,6 +287,9 @@ class MessageBubble(QWidget):
                 self.reasoning_toggle.setChecked(False)
 
             self.body.setHtml(_md_to_html(content) if content.strip() else "<i>（无内容）</i>")
+            if isinstance(self.body, _BodyBrowser):
+                self.body.fit_height()
+                QTimer.singleShot(0, self.body.fit_height)  # 布局落定后再贴一次
             if self.message_id and self.action_bar is not None:
                 self.action_bar.setVisible(True)
         self._autoscroll()

@@ -65,11 +65,15 @@ def main() -> None:
 
     def shoot() -> None:
         a = win._bubbles[-1]
-        n_stages = len(a._stage_sections)
+        doc_h = int(a.body.document().size().height())
         print("window:", win.width(), "x", win.height(),
               "| column:", win.chat_container.width(),
-              "| assistant bubble:", a.width(), "| body:", a.body.width(),
-              "| stage sections:", n_stages)
+              "| assistant bubble:", a.width(), "x", a.height(),
+              "| body:", a.body.width(), "x", a.body.height(),
+              "| doc h:", doc_h,
+              "| stage sections:", len(a._stage_sections))
+        assert a.body.height() <= doc_h + 10, \
+            f"正文高度仍虚高: body={a.body.height()} vs doc={doc_h}"
         img = app.primaryScreen().grabWindow(int(win.winId()))
         out = os.environ.get("UI_PREVIEW_OUT", r"D:/WenMo/app/_ui_check.png")
         img.save(out)

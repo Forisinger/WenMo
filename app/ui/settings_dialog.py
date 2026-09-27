@@ -6,8 +6,9 @@ BaseURL / 模型名 / temperature / 上下文轮数存 settings 表；
 """
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QVBoxLayout,
+    QApplication, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
+    QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
+    QSpinBox, QVBoxLayout,
 )
 
 from core import settings_store
@@ -57,16 +58,13 @@ class SettingsDialog(QDialog):
         self.model.setPlaceholderText("deepseek-flash")
         form.addRow("模型名", self.model)
 
-        # API Key
+        # API Key（状态由验证驱动：未配置/验证中/已保存/无效）
         key_row = QHBoxLayout()
-        current_key = settings_store.get_api_key()
+        self._saved_key = settings_store.get_api_key() or ""
         self.key_edit = QLineEdit()
-        self.key_edit.setPlaceholderText(
-            f"已保存（尾号 {current_key[-4:]}），输入新 Key 覆盖" if current_key else "sk-…")
         self.key_edit.setEchoMode(QLineEdit.Password)
         key_row.addWidget(self.key_edit, 1)
-        self.key_hint = QLabel(
-            "已入凭据管理器" if settings_store.all_config()["key_in_keyring"] else "明文本地存储")
+        self.key_hint = QLabel("")
         key_row.addWidget(self.key_hint)
         form.addRow("API Key", key_row)
 
@@ -96,6 +94,35 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+
+        self._refresh_key_status()
+
+    # ---- Key 状态（验证驱动）----
+    def _refresh_key_status(self) -> None:
+        """打开设置时异步验证已存 Key：未配置 / 验证中 / 已保存 / 无效。"""
+        key = settings_store.get_api_key()
+        if not key:
+            self._saved_key = ""
+            self.key_edit.setPlaceholderText("sk-…")
+            self.key_hint.setText("未配置")
+            return
+        self.key_edit.setPlaceholderText(f"输入新 Key 覆盖（当前尾号 {key[-4:]}）")
+        self.key_hint.setText("验证中…")
+        self._verify_worker = _TestWorker(
+            settings_store.get("base_url"), key, settings_store.get("model"), self)
+        self._verify_worker.done.connect(self._on_verify_done)
+        self._verify_worker.start()
+
+    def _on_verify_done(self, ok: bool, msg: str) -> None:
+        if not self._saved_key:
+            return
+        if ok:
+            in_keyring = settings_store.all_config()["key_in_keyring"]
+            self.key_hint.setText(
+                f"✓ 已保存（尾号 {self._saved_key[-4:]}）"
+                + ("· 已入凭据管理器" if in_keyring else "· 明文本地存储"))
+        else:
+            self.key_hint.setText(f"✗ Key 无效（{msg}），请重新输入")
 
     # ---- 事件 ----
     def _apply_preset(self, idx: int) -> None:
@@ -128,10 +155,29 @@ class SettingsDialog(QDialog):
             settings_store.set("model", model)
         new_key = self.key_edit.text().strip()
         if new_key:
+            # 新 Key 先验证再保存：无效的 Key 不入库，界面也不显示「已保存」
+            self.test_btn.setEnabled(False)
+            self.test_result.setText("正在验证新 Key…")
+            QApplication.processEvents()
+            ok, msg = test_connection(base_url or settings_store.get("base_url"),
+                                      new_key, model or settings_store.get("model"))
+            self.test_btn.setEnabled(True)
+            self.test_result.setText(("✓ " if ok else "✗ ") + msg)
+            if not ok:
+                QMessageBox.warning(
+                    self, "API Key 未保存",
+                    f"新 Key 验证失败：{msg}\n已保留原 Key（如有），请修正后再保存。")
+                settings_store.set("temperature", str(self.temperature.value()))
+                settings_store.set("max_rounds", str(self.max_rounds.value()))
+                self.settings_changed.emit()
+                return  # 保持对话框打开，让用户当场修正
             in_keyring = settings_store.set_api_key(new_key)
-            self.key_hint.setText("已入凭据管理器" if in_keyring else "明文本地存储")
+            self._saved_key = new_key
             self.key_edit.clear()
-            self.key_edit.setPlaceholderText(f"已保存（尾号 {new_key[-4:]}），输入新 Key 覆盖")
+            self.key_edit.setPlaceholderText("输入新 Key 覆盖")
+            self.key_hint.setText(
+                f"✓ 已保存（尾号 {new_key[-4:]}）"
+                + ("· 已入凭据管理器" if in_keyring else "· 明文本地存储"))
         settings_store.set("temperature", str(self.temperature.value()))
         settings_store.set("max_rounds", str(self.max_rounds.value()))
         self.settings_changed.emit()

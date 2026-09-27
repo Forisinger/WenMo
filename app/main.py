@@ -3,6 +3,7 @@ import os
 import sys
 import traceback
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from core import prompts_store
@@ -12,6 +13,12 @@ from ui.main_window import MainWindow
 from ui.theme import THEME
 
 _CRASH_LOG = os.path.join(data_dir(), "crash.log")
+
+
+def _icon_path() -> str:
+    """应用图标路径：兼容 PyInstaller onefile 解包目录与源码运行。"""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, "assets", "icon.ico")
 
 
 def _log_crash(exc: BaseException) -> None:
@@ -32,6 +39,7 @@ def main() -> None:
         app = QApplication(sys.argv)
         app.setApplicationName("文墨")
         app.setOrganizationName("WenMo")
+        app.setWindowIcon(QIcon(_icon_path()))
         app.setStyleSheet(THEME)
 
         win = MainWindow()

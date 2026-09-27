@@ -62,8 +62,8 @@ venv/Scripts/python tests/smoke_test.py
 # 运行（开发模式）
 venv/Scripts/python main.py
 
-# 打包 exe
-venv/Scripts/python -m PyInstaller --onefile --noconsole --name 文墨 --hidden-import keyring.backends.Windows main.py
+# 打包 exe（含应用图标）
+venv/Scripts/python -m PyInstaller --onefile --noconsole --name 文墨 --icon assets/icon.ico --add-data "assets;assets" --hidden-import keyring.backends.Windows main.py
 # 产物：app/dist/文墨.exe
 ```
 
@@ -100,3 +100,7 @@ app/
 - 流式结束（done / stopped / error）时消息才落库，中断不掉已生成内容。
 - 思维链 / 流水线阶段产物随消息一并存库（messages.reasoning 列），重启后气泡里仍能看到。
 - 架构细节见 `技术文档.md`（中文）与 `TECHNICAL.md`（英文）。
+
+## 开源许可
+
+本项目以 [MIT License](LICENSE) 开源。

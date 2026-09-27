@@ -10,7 +10,7 @@ DeepSeek-style chat UI · Four-stage creative pipeline · SQLite persistence · 
 [![Qt](https://img.shields.io/badge/UI-PySide6%20(Qt6)-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows&logoColor=white)](#)
 [![Storage](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white)](#)
-[![License](https://img.shields.io/badge/License-TBD-lightgrey)](#license)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -70,8 +70,9 @@ venv\Scripts\python main.py
 # run the smoke tests (real API cases are skipped unless a key is configured)
 venv\Scripts\python tests\smoke_test.py
 
-# build a single-file exe
+# build a single-file exe (with the app icon baked in)
 venv\Scripts\python -m PyInstaller --onefile --noconsole --name 文墨 `
+    --icon assets\icon.ico --add-data "assets;assets" `
     --hidden-import keyring.backends.Windows main.py
 # → app\dist\文墨.exe
 ```
@@ -127,7 +128,7 @@ See [TECHNICAL.md](TECHNICAL.md) for the full write-up: layer diagram, SQLite sc
 
 ## License
 
-No license has been added yet. If you plan to use or fork this project, ping the repository owner.
+Released under the [MIT License](LICENSE).
 
 ---
 

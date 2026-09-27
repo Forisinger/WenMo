@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161d2c"/>
+      <stop offset="1" stop-color="#0f1420"/>
+    </linearGradient>
+    <linearGradient id="drop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#4a7dff"/>
+    </linearGradient>
+    <linearGradient id="nib" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6d95ff"/>
+      <stop offset="1" stop-color="#3452a8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底板：深墨蓝圆角方块 -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none"
+        stroke="#ffffff" stroke-opacity="0.07" stroke-width="4"/>
+
+  <!-- 墨滴：悬在笔尖上方 -->
+  <path d="M256 58
+           C 256 58 206 132 206 172
+           A 50 50 0 0 0 306 172
+           C 306 132 256 58 256 58 Z"
+        fill="url(#drop)"/>
+  <!-- 墨滴高光 -->
+  <ellipse cx="236" cy="164" rx="12" ry="20" fill="#ffffff" opacity="0.32"
+           transform="rotate(-18 236 164)"/>
+
+  <!-- 笔尖：尖朝下，双肩圆弧 -->
+  <path d="M256 452
+           L 192 330
+           C 176 300 170 272 170 250
+           C 170 226 200 216 256 216
+           C 312 216 342 226 342 250
+           C 342 272 336 300 320 330
+           Z"
+        fill="url(#nib)"/>
+  <!-- 笔缝：从尖端向上 -->
+  <line x1="256" y1="442" x2="256" y2="316" stroke="#eef2f9" stroke-width="12" stroke-linecap="round"/>
+  <!-- 通气孔 -->
+  <circle cx="256" cy="296" r="16" fill="#eef2f9"/>
+</svg>

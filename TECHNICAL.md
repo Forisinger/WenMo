@@ -132,10 +132,10 @@ Built-ins: free chat / outline generation / continuation / polish / naming / wor
 ## 7. Packaging (Windows)
 
 ```powershell
-pyinstaller --onefile --noconsole --name 文墨 --hidden-import keyring.backends.Windows main.py
+pyinstaller --onefile --noconsole --name 文墨 --icon assets/icon.ico --add-data "assets;assets" --hidden-import keyring.backends.Windows main.py
 ```
 
-- Output `app/dist/文墨.exe`, ~50 MB (normal for PySide6).
+- Output `app/dist/文墨.exe`, ~50 MB (normal for PySide6), with the app icon baked into the exe and the window (`assets/icon.svg` → `icon.ico`, loaded at runtime via `sys._MEIPASS`-aware path resolution).
 - App data goes to `%APPDATA%\文墨\` (`wenmo.db`, `prompts/*.json`, `exports/`, `crash.log`), fully separate from the exe.
 - Optional: Inno Setup wrapper for an installer; the single exe is distributable as-is.
 

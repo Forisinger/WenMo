@@ -12,6 +12,31 @@ from PySide6.QtCore import QThread, Signal
 _TIMEOUT = httpx.Timeout(180.0, connect=15.0)
 
 
+_HTTP_HINTS = {
+    401: "API Key 无效或已失效。请到「设置」→ API Key 一栏重新填写有效的 Key"
+         "（可在 platform.deepseek.com 申请），保存后重发即可。",
+    403: "没有访问权限（HTTP 403）：请确认 Key 是否有该模型的调用权限。",
+    404: "接口地址或模型名不对（HTTP 404）：请到「设置」检查 BaseURL 与模型名。",
+    429: "请求太频繁或额度不足（HTTP 429）：请稍后重试，或检查账户余额。",
+}
+
+
+def _friendly_http_error(code: int, body: str) -> str:
+    """把 HTTP 错误翻译成用户能读懂的短文案，不再吐原始 JSON。"""
+    if code in _HTTP_HINTS:
+        return _HTTP_HINTS[code]
+    if code >= 500:
+        return f"服务端暂时出了问题（HTTP {code}）：请稍后重试。"
+    # 其他状态码：尽量提取 error.message，截短
+    msg = body
+    try:
+        msg = json.loads(body).get("error", {}).get("message", body)
+    except Exception:
+        pass
+    msg = (msg or "").strip()[:120]
+    return f"请求失败（HTTP {code}）：{msg or '服务端返回异常'}"
+
+
 def stream_request(base_url: str, api_key: str, model: str,
                    messages: list[dict], temperature: float,
                    on_token=None, on_reasoning=None,
@@ -46,7 +71,7 @@ def stream_request(base_url: str, api_key: str, model: str,
                     body = resp.read().decode("utf-8", errors="replace")[:500]
                 except Exception:
                     pass
-                return _finish("error", f"HTTP {resp.status_code}：{body or '服务端返回异常'}")
+                return _finish("error", _friendly_http_error(resp.status_code, body))
 
             for line in resp.iter_lines():
                 if stop_check and stop_check():

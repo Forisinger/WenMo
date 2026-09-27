@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 虚拟环境
+app/venv/
+
+# PyInstaller 构建产物（exe 需自行打包或从 Release 下载）
+app/build/
+app/build_v2/
+app/dist/
+app/dist_v2/
+app/*.spec
+
+# 会话与工作数据
+.workbuddy/
+
+# 临时产物
+app/_ui*.png
+app/_exe*.png
+app/_pcheck.txt

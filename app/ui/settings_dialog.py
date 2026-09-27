@@ -99,12 +99,12 @@ class SettingsDialog(QDialog):
 
     # ---- Key 状态（验证驱动）----
     def _refresh_key_status(self) -> None:
-        """打开设置时异步验证已存 Key：未配置 / 验证中 / 已保存 / 无效。"""
+        """打开设置时异步验证已存 Key；未配置/无效时只显示简短占位，不展示长错误。"""
         key = settings_store.get_api_key()
         if not key:
             self._saved_key = ""
-            self.key_edit.setPlaceholderText("sk-…")
-            self.key_hint.setText("未配置")
+            self.key_edit.setPlaceholderText("请输入API Key")
+            self.key_hint.setText("")
             return
         self.key_edit.setPlaceholderText(f"输入新 Key 覆盖（当前尾号 {key[-4:]}）")
         self.key_hint.setText("验证中…")
@@ -122,7 +122,9 @@ class SettingsDialog(QDialog):
                 f"✓ 已保存（尾号 {self._saved_key[-4:]}）"
                 + ("· 已入凭据管理器" if in_keyring else "· 明文本地存储"))
         else:
-            self.key_hint.setText(f"✗ Key 无效（{msg}），请重新输入")
+            # 状态提示只保留短文案，错误细节已在下方「测试连接」结果里
+            self.key_hint.setText("✗ Key 无效")
+            self.key_edit.setPlaceholderText("请输入API Key")
 
     # ---- 事件 ----
     def _apply_preset(self, idx: int) -> None:

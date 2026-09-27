@@ -441,12 +441,16 @@ class MainWindow(QMainWindow):
         self._start_generation()
 
     def _show_no_key_notice(self) -> None:
-        """未配置 API Key：在对话区插入一条提示气泡（不落库，不进历史）。"""
+        """未配置 API Key：文墨以回复形式告知原因及配置方法（不落库，不进历史）。"""
         self._hide_welcome()
         bubble = MessageBubble("assistant")
         bubble.finalize(
-            "⚠ **尚未连接 API Key**\n\n"
-            "请点击左侧「设置」，在 **API Key** 一栏填写你的 Key（保存前会自动验证）再发送。")
+            "我还没有连接 API Key，暂时无法回复。\n\n"
+            "配置方法：\n"
+            "1. 前往 [platform.deepseek.com](https://platform.deepseek.com) 注册并创建 API Key；\n"
+            "2. 回到文墨，点击左下角「设置」；\n"
+            "3. 在 **API Key** 一栏粘贴你的 Key（形如 `sk-…`），保存时会自动验证。\n\n"
+            "配好之后把刚才的话再发一次就好。")
         self.chat_lay.insertWidget(self.chat_lay.count() - 1, bubble)
         QTimer.singleShot(0, self._scroll_bottom)
 

@@ -432,6 +432,9 @@ class MainWindow(QMainWindow):
             db.rename_session(sid, text[:20])
             self.chat_title.setText(text[:20])
         db.add_message(sid, "user", text)
+        # 记录本轮用户消息：打断时回滚（不写入记忆），并把文本还给输入框
+        self._pending_user_mid = db.get_last_message_id(sid)
+        self._pending_user_text = text
 
         bubble = MessageBubble("user")
         bubble.finalize(text)
@@ -538,8 +541,19 @@ class MainWindow(QMainWindow):
             self._placeholder = None
             if status == "done":
                 bubble.finalize(content, extra)
+                self._pending_user_mid = None
+                self._pending_user_text = ""
             elif status == "stopped":
-                bubble.finalize(content or "（已停止）", extra)
+                # 打断：正文保留 + 追加终止标记；本轮不写入记忆
+                bubble.finalize(
+                    (content + "\n\n" if content else "") + "**—— 对话已终止 ——**")
+                pending_mid = getattr(self, "_pending_user_mid", None)
+                if pending_mid:
+                    db.delete_message(pending_mid)   # 回滚本轮用户消息
+                if getattr(self, "_pending_user_text", ""):
+                    self.input.setPlainText(self._pending_user_text)  # 还给输入框，可编辑重发
+                self._pending_user_mid = None
+                self._pending_user_text = ""
             else:
                 bubble.finalize((content + "\n\n" if content else "") + f"⚠ {extra}")
 
@@ -548,7 +562,8 @@ class MainWindow(QMainWindow):
                 db.add_message(sid, "assistant", content or f"⚠ {extra}",
                                model=cfg["model"], status="error",
                                reasoning=extra if content else None)
-            else:
+            elif status != "stopped":
+                # 打断的回复不落库，记忆与打断前一致
                 db.add_message(sid, "assistant", content or "（已停止）",
                                model=cfg["model"], status=status, reasoning=extra)
         self._reload_sessions()
@@ -568,6 +583,9 @@ class MainWindow(QMainWindow):
         if not msgs or msgs[-1]["id"] != mid or msgs[-1]["role"] != "assistant":
             QMessageBox.information(self, APP_NAME, "只能重新生成最后一条回复。")
             return
+        # 重新生成基于已有历史，打断时不回滚用户消息
+        self._pending_user_mid = None
+        self._pending_user_text = ""
         db.delete_message(mid)
         self.open_session(sid)
         self._start_generation()

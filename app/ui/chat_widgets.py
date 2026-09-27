@@ -153,7 +153,7 @@ class MessageBubble(QWidget):
         if role == "assistant":
             self.reasoning_toggle, self.reasoning_box = self._make_section("已深度思考")
 
-        # ---- 操作栏（仅助手，完成后显示）----
+        # ---- 操作栏（助手=复制/重新生成/删除；用户=复制）----
         self.action_bar: QWidget | None = None
         if role == "assistant":
             self.action_bar = QWidget()
@@ -173,6 +173,21 @@ class MessageBubble(QWidget):
                 bar_lay.addWidget(btn)
             bar_lay.addStretch(1)  # 按钮靠左紧凑排列
             self.action_bar.setVisible(False)
+            self.content_col.addWidget(self.action_bar)
+        else:
+            # 用户消息也能一键复制
+            self.action_bar = QWidget()
+            bar_lay = QHBoxLayout(self.action_bar)
+            bar_lay.setContentsMargins(0, 0, 0, 0)
+            bar_lay.setSpacing(2)
+            bar_lay.addStretch(1)  # 用户侧按钮靠右
+            btn = QToolButton()
+            btn.setObjectName("ActionBtn")
+            btn.setText("复制")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(self._copy_content)
+            bar_lay.addWidget(btn)
+            self.action_bar.setVisible(True)
             self.content_col.addWidget(self.action_bar)
 
         # ---- 组装：助手=头像在左；用户=内容在右、头像在右 ----

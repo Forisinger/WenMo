@@ -73,34 +73,41 @@ def stream_request(base_url: str, api_key: str, model: str,
                     pass
                 return _finish("error", _friendly_http_error(resp.status_code, body))
 
-            for line in resp.iter_lines():
+            try:
+                for line in resp.iter_lines():
+                    if stop_check and stop_check():
+                        return _finish("stopped")
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        obj = json.loads(data)
+                    except json.JSONDecodeError:
+                        continue
+                    if obj.get("error"):
+                        return _finish("error", obj["error"].get("message", "服务端返回错误"))
+                    choices = obj.get("choices") or []
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta") or {}
+                    r = delta.get("reasoning_content")
+                    if r:
+                        reasoning_parts.append(r)
+                        if on_reasoning:
+                            on_reasoning(r)
+                    c = delta.get("content")
+                    if c:
+                        content_parts.append(c)
+                        if on_token:
+                            on_token(c)
+            except OSError:
+                # stop() 会在另一线程关闭响应，阻塞中的 iter_lines 因此抛
+                # WinError 10038（非套接字操作）——这是主动打断，按停止处理
                 if stop_check and stop_check():
                     return _finish("stopped")
-                if not line or not line.startswith("data:"):
-                    continue
-                data = line[5:].strip()
-                if data == "[DONE]":
-                    break
-                try:
-                    obj = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
-                if obj.get("error"):
-                    return _finish("error", obj["error"].get("message", "服务端返回错误"))
-                choices = obj.get("choices") or []
-                if not choices:
-                    continue
-                delta = choices[0].get("delta") or {}
-                r = delta.get("reasoning_content")
-                if r:
-                    reasoning_parts.append(r)
-                    if on_reasoning:
-                        on_reasoning(r)
-                c = delta.get("content")
-                if c:
-                    content_parts.append(c)
-                    if on_token:
-                        on_token(c)
+                raise
         finally:
             try:
                 stream.__exit__(None, None, None)

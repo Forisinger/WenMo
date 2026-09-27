@@ -155,6 +155,13 @@ def delete_message(mid: str) -> None:
     _c().commit()
 
 
+def get_last_message_id(session_id: str) -> str | None:
+    row = _c().execute(
+        "SELECT id FROM messages WHERE session_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        (session_id,)).fetchone()
+    return row[0] if row else None
+
+
 def delete_message_pair(mid: str) -> list[str]:
     """删除一条助手消息及其触发它的用户消息（回滚上下文记忆）。
 
